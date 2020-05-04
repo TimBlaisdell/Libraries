@@ -1,7 +1,7 @@
 using System;
 using System.Globalization;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONNumberValue is very much like a C# number, except that octal and hexadecimal formats
     ///     are not used.

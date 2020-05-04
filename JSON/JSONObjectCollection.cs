@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONObjectCollection is an unordered set of name/value pairs. An object begins
     ///     with "{" (left brace) and ends with "}" (right brace). Each name is followed
@@ -26,15 +26,11 @@ namespace IODPUtils.JSON {
         /// <summary>
         ///     Required override of the BeginMarker property
         /// </summary>
-        protected override string BeginMarker {
-            get { return "{"; }
-        }
+        protected override string BeginMarker => "{";
         /// <summary>
         ///     Required override of the EndMarker property
         /// </summary>
-        protected override string EndMarker {
-            get { return "}"; }
-        }
+        protected override string EndMarker => "}";
         /// <summary>
         ///     Adds a JSONStringValue as the "name" and a JSONValue as the "value" to the
         ///     internal Dictionary.  Values are checked to ensure no duplication occurs

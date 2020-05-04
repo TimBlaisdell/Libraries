@@ -1,4 +1,4 @@
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONBoolValue represents a boolean value in JSONSharp.
     /// </summary>

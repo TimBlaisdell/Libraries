@@ -1,11 +1,13 @@
-namespace IODPUtils.JSON {
+using System;
+
+namespace JSON {
     /// <summary>
     ///     JSONValue represents the core object in JSONSharp.  It is used to represent values
     ///     to be contained within a JSON-compliant string of characters.
     ///     A JSON value can be a string in double quotes, a number, true or false, null, an
     ///     object or an array. These structures can be nested.
     /// </summary>
-    public abstract class JSONValue {
+    [Serializable] public abstract class JSONValue {
         internal JSONValue() {
         }
         /// <summary>

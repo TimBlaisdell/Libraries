@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONStringValue is a collection of zero or more Unicode characters, wrapped in double quotes,
     ///     using backslash escapes. A character is represented as a single character string. A string

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     <para>
     ///         A JSONArray is an ordered sequence of values. Its external form is a string
@@ -85,10 +85,21 @@ namespace IODPUtils.JSON {
             _myList = new List<object>();
         }
         /// <summary>
-        ///     Construct a JSONArray from a source string.
+        ///     Construct a JSONArray from a string. Allows for comments like this: {/* comment */}
+        ///     Also allows for comments without the curly-braces like this: /* comment */
         /// </summary>
         /// <param name="s">A string that begins with '[' and ends with ']'.</param>
         public JSONArray(string s) {
+            for (var commentindex = 0; commentindex < JSONObject.CommentStarters.Length; ++commentindex) {
+                var start = JSONObject.CommentStarters[commentindex];
+                var end = JSONObject.CommentEnders[commentindex];
+                while (s.Contains(start)) {
+                    var i = s.IndexOf(start, StringComparison.Ordinal);
+                    var i2 = s.IndexOf(end, StringComparison.Ordinal);
+                    if (i < 0 || i < 0 || i2 <= i) break;
+                    s = s.Remove(i, i2 - i + 3);
+                }
+            }
             lock (_serializer) {
                 _myList = _serializer.Deserialize<List<object>>(s);
             }
@@ -112,8 +123,30 @@ namespace IODPUtils.JSON {
         /// <summary>
         ///     Private for internal use.  Doesn't do the normalize step -- assumes the list has already been normalized.
         /// </summary>
-        private JSONArray(IEnumerable<object> list) {
+        protected JSONArray(IEnumerable<object> list) {
             _myList = list.ToList();
+        }
+        /// <summary>
+        /// An event triggered when something changes in this object, such as a call to put.
+        /// Handling this event lets you, for example, update a file every time it changes.
+        /// USE WITH CARE.  Improper use will slow down your program if an object changes a lot!
+        /// </summary>
+        public event EventHandler Altered;
+        /// <summary>
+        /// Creates a new instance that's a deep copy of this JSONArray with all underlying objects copied at all levels (e.g. JSONObjects and JSONArrays within this JSONObject will be deep-copied).
+        /// </summary>
+        public JSONArray Clone() {
+            var newarray = new JSONArray();
+            object[] myarray;
+            lock (_myList) {
+                myarray = _myList.ToArray();
+            }
+            foreach (var obj in myarray) {
+                if (obj is JSONObject) newarray.put(((JSONObject) obj).Clone());
+                else if (obj is JSONArray) newarray.putJSONArray(((JSONArray) obj).Clone());
+                else newarray.put(obj);
+            }
+            return newarray;
         }
         /// <summary>
         ///     Alternate to Java get/put method, by using indexer
@@ -130,14 +163,14 @@ namespace IODPUtils.JSON {
         ///     Using a propery instead of method
         /// </summary>
         public int Count {
-            get { return _myList.Count; }
+            get {
+                lock (_myList) return _myList.Count;
+            }
         }
         /// <summary>
         ///     Alternativ to Java, getArrayList, by using propery
         /// </summary>
-        public IList List {
-            get { return _myList; }
-        }
+        public IList List => _myList;
         /// <summary>
         ///     Get the ArrayList which is holding the elements of the JSONArray.
         ///     Use the indexer instead!! Added to be true to the orignal Java src
@@ -155,7 +188,7 @@ namespace IODPUtils.JSON {
         public bool getBoolean(int i) {
             object obj = getValue(i);
             if (obj is bool) return (bool) obj;
-            string msg = string.Format("JSONArray[{0}]={1} not a Boolean", i, obj);
+            string msg = $"JSONArray[{i}]={obj} not a Boolean";
             throw new Exception(msg);
         }
         /// <summary>
@@ -167,11 +200,11 @@ namespace IODPUtils.JSON {
             object obj = getValue(i);
             if (obj is double) return (double) obj;
             if (obj is string) return Convert.ToDouble(obj);
-            string msg = string.Format("JSONArray[{0}]={1} not a double", i, obj);
+            string msg = $"JSONArray[{i}]={obj} not a double";
             throw new Exception(msg);
         }
         public IEnumerator<object> GetEnumerator() {
-            return _myList.GetEnumerator();
+            lock (_myList) return _myList.GetEnumerator();
         }
         /// <summary>
         ///     Get the int value associated with an index.
@@ -182,7 +215,7 @@ namespace IODPUtils.JSON {
             object obj = getValue(i);
             if (obj is int) return (int) obj;
             if (obj is string) return Convert.ToInt32(obj);
-            string msg = string.Format("JSONArray[{0}]={1} not a int", i, obj);
+            string msg = $"JSONArray[{i}]={obj} not a int";
             throw new Exception(msg);
         }
         /// <summary>
@@ -193,7 +226,7 @@ namespace IODPUtils.JSON {
         public JSONArray getJSONArray(int i) {
             object obj = getValue(i) as JSONArray;
             if (obj != null) return (JSONArray) obj;
-            string msg = string.Format("JSONArray[{0}]={1} not a JSONArray", i, getValue(i));
+            string msg = $"JSONArray[{i}]={getValue(i)} not a JSONArray";
             throw new Exception(msg);
         }
         /// <summary>
@@ -204,7 +237,7 @@ namespace IODPUtils.JSON {
         public JSONObject getJSONObject(int i) {
             object obj = getValue(i) as JSONObject;
             if (obj != null) return (JSONObject) obj;
-            string msg = string.Format("JSONArray[{0}]={1} not a JSONObject", i, getValue(i));
+            string msg = $"JSONArray[{i}]={getValue(i)} not a JSONObject";
             throw new Exception(msg);
         }
         /// <summary>
@@ -224,8 +257,7 @@ namespace IODPUtils.JSON {
         /// <returns>A string value.</returns>
         public string getString(int i) {
             object obj = getValue(i);
-            if (obj == null) return null;
-            return obj.ToString();
+            return obj?.ToString();
             //string msg = string.Format("JSONArray[{0}]={1} not a string", i, getValue(i));
             //throw new Exception(msg);
         }
@@ -238,7 +270,7 @@ namespace IODPUtils.JSON {
         public object getValue(int i) {
             object obj = opt(i);
             if (obj == null) {
-                string msg = string.Format("JSONArray[{0}] not found", i);
+                string msg = $"JSONArray[{i}] not found";
                 throw new Exception(msg);
             }
             return obj;
@@ -259,15 +291,25 @@ namespace IODPUtils.JSON {
         /// </summary>
         /// <param name="separator">separator A string that will be inserted between the elements.</param>
         /// <returns>A string.</returns>
-        public string join(string separator) {
+        public string join(string separator, bool format = false, int tab = 0) {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < _myList.Count; i++) {
-                if (i > 0) sb.Append(separator);
-                var obj = _myList[i];
-                if (obj == null) sb.Append("");
-                else if (obj is string) sb.Append(JSONUtils.Enquote((string) obj));
-                else if (obj is int) sb.Append(((int) obj).ToString());
-                else sb.Append(obj);
+            lock (_myList) {
+                for (int i = 0; i < _myList.Count; i++) {
+                    if (i > 0) {
+                        sb.Append(separator);
+                        if (format) {
+                            sb.Append(Environment.NewLine);
+                            for (int t = 0; t < tab; ++t) sb.Append("\t");
+                        }
+                    }
+                    var obj = _myList[i];
+                    if (obj == null) sb.Append("");
+                    else if (obj is string) sb.Append(JSONUtils.Enquote((string) obj));
+                    else if (obj is int) sb.Append(((int) obj).ToString());
+                    else if (obj is JSONObject) sb.Append(((JSONObject) obj).ToString(format, tab));
+                    else if (obj is JSONArray) sb.Append(((JSONArray) obj).ToString(format, tab));
+                    else sb.Append(obj);
+                }
             }
             return sb.ToString();
         }
@@ -277,7 +319,7 @@ namespace IODPUtils.JSON {
         /// </summary>
         /// <returns>Number of JSONObjects in array</returns>
         public int Length() {
-            return _myList.Count;
+            lock (_myList) return _myList.Count;
         }
         /// <summary>
         ///     Get the optional object value associated with an index.
@@ -285,8 +327,10 @@ namespace IODPUtils.JSON {
         /// <param name="i">index subscript</param>
         /// <returns>object at that index.</returns>
         public object opt(int i) {
-            if (i < 0 || i >= _myList.Count) throw new ArgumentOutOfRangeException("i", i, "Index out of bounds!");
-            return _myList[i];
+            lock (_myList) {
+                if (i < 0 || i >= _myList.Count) return null; //throw new ArgumentOutOfRangeException(nameof(i), i, "Index out of bounds!");
+                return _myList[i];
+            }
         }
         /// <summary>
         ///     Get the optional boolean value associated with an index.
@@ -332,7 +376,7 @@ namespace IODPUtils.JSON {
             if (obj != null) {
                 if (obj is double) return (double) obj;
                 if (obj is string) return Convert.ToDouble(obj);
-                string msg = string.Format("JSONArray[{0}]={1} not a double", i, obj);
+                string msg = $"JSONArray[{i}]={obj} not a double";
                 throw new Exception(msg);
             }
             return defaultValue;
@@ -360,7 +404,7 @@ namespace IODPUtils.JSON {
             if (obj != null) {
                 if (obj is int) return (int) obj;
                 if (obj is string) return Convert.ToInt32(obj);
-                string msg = string.Format("JSONArray[{0}]={1} not a int", i, obj);
+                string msg = $"JSONArray[{i}]={obj} not a int";
                 throw new Exception(msg);
             }
             return defaultValue;
@@ -372,8 +416,7 @@ namespace IODPUtils.JSON {
         /// <returns>A JSONArray value, or null if the index has no value, or if the value is not a JSONArray.</returns>
         public JSONArray optJSONArray(int i) {
             object obj = opt(i) as JSONArray;
-            if (obj != null) return (JSONArray) obj;
-            return null;
+            return (JSONArray) obj;
         }
         /// <summary>
         ///     Get the optional JSONObject associated with an index.
@@ -384,8 +427,7 @@ namespace IODPUtils.JSON {
         /// <returns>A JSONObject value</returns>
         public JSONObject optJSONObject(int i) {
             object obj = opt(i) as JSONObject;
-            if (obj != null) return (JSONObject) obj;
-            return null;
+            return (JSONObject) obj;
         }
         /// <summary>
         ///     Get the optional string value associated with an index. It returns an
@@ -412,17 +454,39 @@ namespace IODPUtils.JSON {
         /// <summary>
         ///     Append an object value.
         /// </summary>
-        /// <param name="val">
-        ///     An object value.  The value should be a Boolean, Double, Integer, JSONArray, JSObject, or String, or
+        /// <param name="vals">
+        ///     One or more object values.  The value should be a Boolean, Double, Integer, JSONArray, JSObject, or String, or
         ///     the JSONObject.NULL object
         /// </param>
         /// <returns>this (JSONArray)</returns>
-        public JSONArray put(object val) {
-            _myList.Add(val);
+        public JSONArray put(params object[] vals) {
+            lock (_myList)
+                foreach (var val in vals)
+                    _myList.Add(val);
+            Altered?.Invoke(this, new EventArgs());
             return this;
         }
+        /// <summary>
+        /// Beware!  If passed a JSONArray (or other enumerable), this method will put the contents of the JSONArray into this JSONArray -- it won't add the array itself to this array as an item.
+        /// To do that, call putJSONArray().
+        /// </summary>
+        /// <param name="vals"></param>
+        /// <returns></returns>
         public JSONArray put(IEnumerable<object> vals) {
             foreach (var val in vals) put(val);
+            return this;
+        }
+        /// <summary>
+        /// If you want a JSONArray to contain JSONArrays, use this method, rather than the regular put method, to add them.
+        /// The regular put method will add the contents of the JSONArray to this JSONArray.
+        /// </summary>
+        /// <param name="vals"></param>
+        /// <returns></returns>
+        public JSONArray putJSONArray(params JSONArray[] vals) {
+            lock (_myList)
+                foreach (var val in vals)
+                    _myList.Add(val);
+            Altered?.Invoke(this, new EventArgs());
             return this;
         }
         /// <summary>
@@ -435,14 +499,32 @@ namespace IODPUtils.JSON {
         /// <param name="val">An object value.</param>
         /// <returns>this (JSONArray)</returns>
         public JSONArray put(int i, object val) {
-            if (i < 0) throw new ArgumentOutOfRangeException("i", i, "Negative indexes illegal");
-            if (val == null) throw new ArgumentNullException("val", "Object cannt be null");
-            if (i < _myList.Count) _myList.Insert(i, val);
-            // NOTE! Since i is >= Count, fill null vals before index i, then append new object at i
-            else {
-                while (i != _myList.Count) _myList.Add(null);
-                _myList.Add(val);
+            if (i < 0) throw new ArgumentOutOfRangeException(nameof(i), i, "Negative indexes illegal");
+            if (val == null) throw new ArgumentNullException(nameof(val), "Object cannt be null");
+            lock (_myList) {
+                if (i < _myList.Count) _myList[i] = val;
+                // NOTE! Since i is >= Count, fill null vals before index i, then append new object at i
+                else {
+                    while (i != _myList.Count) _myList.Add(null);
+                    _myList.Add(val);
+                }
             }
+            Altered?.Invoke(this, new EventArgs());
+            return this;
+        }
+        public JSONArray RemoveAt(int i) {
+            lock (_myList) {
+                if (i < 0 || i >= Count) throw new ArgumentOutOfRangeException(nameof(i), i, "JSONArray.RemoveAt index must be greater than zero and less than Count.");
+                _myList.RemoveAt(i);
+            }
+            Altered?.Invoke(this, new EventArgs());
+            return this;
+        }
+        public JSONArray RemoveWhere<T>(Func<T, bool> func) {
+            lock (_myList) {
+                _myList.RemoveAll(o => o is T && func((T) o));
+            }
+            Altered?.Invoke(this, new EventArgs());
             return this;
         }
         /// <summary>
@@ -451,8 +533,10 @@ namespace IODPUtils.JSON {
         ///     second will contain the remainder of the array or be empty if everything fit into the first one.
         /// </summary>
         public void Split(int i, out JSONArray first, out JSONArray remainder) {
-            first = new JSONArray(_myList.Take(i));
-            remainder = new JSONArray(_myList.Skip(i));
+            lock (_myList) {
+                first = new JSONArray(_myList.Take(i));
+                remainder = new JSONArray(_myList.Skip(i));
+            }
         }
         public T[] ToArray<T>(string omitIfMissingField = null) where T : JSONObject, new() {
             var list = new List<T>();
@@ -482,7 +566,8 @@ namespace IODPUtils.JSON {
             for (int i = 0; i < Length(); ++i) {
                 T t = new T();
                 t.Load(getJSONObject(i));
-                dict.Add(t.getInt(keyname), t);
+                var key = t.getInt(keyname);
+                if (!dict.ContainsKey(key)) dict.Add(key, t);
             }
             return dict;
         }
@@ -523,7 +608,15 @@ namespace IODPUtils.JSON {
         /// </summary>
         /// <returns>a printable, displayable, transmittable representation of the array.</returns>
         public override string ToString() {
-            return '[' + join(",") + ']';
+            return ToString(false, 0);
+        }
+        public string ToString(bool format, int tab) {
+            bool splitThingsUp = false;
+            if (format) {
+                lock (_myList) splitThingsUp = _myList.Any(o => o is JSONObject || o is JSONArray);
+                ++tab;
+            }
+            return '[' + join(", ", format && splitThingsUp, tab) + ']';
         }
         IEnumerator IEnumerable.GetEnumerator() {
             return GetEnumerator();
@@ -532,12 +625,35 @@ namespace IODPUtils.JSON {
         ///     Replaces any items of type Dictionary&lt;string, object&gt; with a JSONObject.
         /// </summary>
         private void Normalize() {
-            for (int i = 0; i < _myList.Count; ++i) {
-                object o = _myList[i];
-                if (o is Dictionary<string, object>) _myList[i] = new JSONObject((Dictionary<string, object>) o);
-                else if (o is ArrayList) _myList[i] = new JSONArray((ArrayList) o);
-                else if (o is Array) _myList[i] = new JSONArray((Array) o);
+            bool changed = false;
+            lock (_myList) {
+                for (int i = 0; i < _myList.Count; ++i) {
+                    object o = _myList[i];
+                    if (o is Dictionary<string, object>) {
+                        _myList[i] = new JSONObject((Dictionary<string, object>) o);
+                        changed = true;
+                    }
+                    else if (o is ArrayList) {
+                        _myList[i] = new JSONArray((ArrayList) o);
+                        changed = true;
+                    }
+                    else if (o is Array) {
+                        _myList[i] = new JSONArray((Array) o);
+                        changed = true;
+                    }
+                }
             }
+            if (changed) Altered?.Invoke(this, new EventArgs());
+        }
+        /// <summary>
+        ///     Creates a JSONArray of strings from an array of strings.
+        /// </summary>
+        public static JSONArray From(IEnumerable<string> strings) {
+            var json = new JSONArray();
+            if (strings != null)
+                foreach (var str in strings)
+                    json.put(str);
+            return json;
         }
         /// <summary>The ArrayList where the JSONArray's properties are kept.</summary>
         private readonly List<object> _myList;

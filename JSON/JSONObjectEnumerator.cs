@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     Generic IEnumerator code taken from MSDN, modified slightly to fit this implementation.
     /// </summary>
@@ -9,7 +9,6 @@ namespace IODPUtils.JSON {
         /// <summary>
         ///     Creates an enumerator for a JSONObject.
         /// </summary>
-        /// <param name="jobj"></param>
         public JSONObjectEnumerator(JSONObject jobj) {
             _jsonObject = jobj;
         }

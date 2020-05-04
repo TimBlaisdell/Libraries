@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONValueCollection represents any collection in JSONSharp.  It is used to
     ///     represent arrays of values to be contained within a JSON-compliant string of characters.
@@ -35,13 +35,13 @@ namespace IODPUtils.JSON {
         /// <returns>The value as a string, indented for readability.</returns>
         public override string PrettyPrint() {
             return Environment.NewLine +
-                   "".PadLeft(CURRENT_INDENT, Convert.ToChar(base.HORIZONTAL_TAB)) +
-                   this.BeginMarker +
+                   "".PadLeft(CURRENT_INDENT, Convert.ToChar(HORIZONTAL_TAB)) +
+                   BeginMarker +
                    Environment.NewLine +
-                   this.CollectionToPrettyPrint() +
+                   CollectionToPrettyPrint() +
                    Environment.NewLine +
-                   "".PadLeft(CURRENT_INDENT, Convert.ToChar(base.HORIZONTAL_TAB)) +
-                   this.EndMarker;
+                   "".PadLeft(CURRENT_INDENT, Convert.ToChar(HORIZONTAL_TAB)) +
+                   EndMarker;
         }
         /// <summary>
         ///     Required override the base ToString() method. Writes contained data using
@@ -50,7 +50,7 @@ namespace IODPUtils.JSON {
         /// </summary>
         /// <returns>The value as a string, formatted in compliance with RFC 4627.</returns>
         public override string ToString() {
-            return this.BeginMarker + this.CollectionToString() + this.EndMarker;
+            return BeginMarker + CollectionToString() + EndMarker;
         }
         /// <summary>
         ///     Any implementation must override CollectionToPrettyPrint(), used for rendering the

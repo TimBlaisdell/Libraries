@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace IODPUtils.JSON {
+namespace JSON {
     /// <summary>
     ///     JSONReflector provides a convenient way to convert value and reference type objects
     ///     to JSON format through reflection.
@@ -48,28 +48,28 @@ namespace IODPUtils.JSON {
             Type thisType = objValue.GetType();
             JSONValue jsonValue = null;
 
-            if (thisType == typeof (Int32)) {
+            if (thisType == typeof(Int32)) {
                 jsonValue = new JSONNumberValue(Convert.ToInt32(objValue));
             }
-            else if (thisType == typeof (Single)) {
+            else if (thisType == typeof(Single)) {
                 jsonValue = new JSONNumberValue(Convert.ToSingle(objValue));
             }
-            else if (thisType == typeof (Double)) {
+            else if (thisType == typeof(Double)) {
                 jsonValue = new JSONNumberValue(Convert.ToDouble(objValue));
             }
-            else if (thisType == typeof (Decimal)) {
+            else if (thisType == typeof(Decimal)) {
                 jsonValue = new JSONNumberValue(Convert.ToDecimal(objValue));
             }
-            else if (thisType == typeof (Byte)) {
+            else if (thisType == typeof(Byte)) {
                 jsonValue = new JSONNumberValue(Convert.ToByte(objValue));
             }
-            else if (thisType == typeof (String)) {
+            else if (thisType == typeof(String)) {
                 jsonValue = new JSONStringValue(Convert.ToString(objValue));
             }
-            else if (thisType == typeof (Boolean)) {
+            else if (thisType == typeof(Boolean)) {
                 jsonValue = new JSONBoolValue(Convert.ToBoolean(objValue));
             }
-            else if (thisType.BaseType == typeof (Enum)) {
+            else if (thisType.BaseType == typeof(Enum)) {
                 jsonValue = new JSONStringValue(Enum.GetName(thisType, objValue));
             }
             else if (thisType.IsArray) {
