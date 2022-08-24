@@ -83,12 +83,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>mkdir "%25LDAQ_PRODUCTS%25"
-powershell -Command "compress-archive -Force -Path .\$(ProjectName).dll,.\$(ProjectName).info.json -DestinationPath '%25LDAQ_PRODUCTS%25\$(ProjectName).zip'"
-if exist "%25LDAQ_PRODUCTS%25\Deploy.bat" call "%25LDAQ_PRODUCTS%25\Deploy.bat" "%25LDAQ_PRODUCTS%25\$(ProjectName).zip"
-mkdir "%25LAUNCHER_LIBS%25"
-copy "%25LDAQ_PRODUCTS%25\$(ProjectName).zip" "%25LAUNCHER_LIBS%25"
-if exist "%25LAUNCHER_LIBS%25\Deploy.bat" call "%25LAUNCHER_LIBS%25\Deploy.bat" "%25LDAQ_PRODUCTS%25\$(ProjectName).zip"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
