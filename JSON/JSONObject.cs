@@ -135,30 +135,14 @@ namespace JSON {
         //    Normalize();
         //}
         /// <summary>
-        /// Creates a new instance that's a copy of the specified JSONObject, without actually copying the data (underlying dictionary is the same instance).
+        ///     Creates a new instance that's a copy of the specified JSONObject, without actually copying the data (underlying
+        ///     dictionary is the same instance).
         /// </summary>
         public JSONObject(JSONObject original) : this(original?._myDict == null ? new ConcurrentDictionary<string, object>() : new ConcurrentDictionary<string, object>(original._myDict)) {
             _myKeyList.Clear();
             lock (original?._myKeyList ?? new List<string>()) {
                 if (original?._myKeyList != null) _myKeyList.AddRange(original._myKeyList);
             }
-        }
-        /// <summary>
-        /// Creates a new instance that's a deep copy of this JSONObject with all underlying objects copied at all levels (e.g. JSONObjects and JSONArrays within this JSONObject will be deep-copied).
-        /// </summary>
-        public JSONObject Clone() {
-            var newobj = new JSONObject();
-            string[] keyarray;
-            lock (_myKeyList) {
-                keyarray = _myKeyList.ToArray();
-            }
-            foreach (var key in keyarray) {
-                var val = _myDict[key];
-                if (val is JSONObject) newobj.put(key, ((JSONObject) val).Clone());
-                else if (val is JSONArray) newobj.put(key, ((JSONArray) val).Clone());
-                else newobj.put(key, val);
-            }
-            return newobj;
         }
         /// <summary>
         ///     Construct a JSONObject from a string. Allows for comments like this: {/* comment */}
@@ -198,15 +182,6 @@ namespace JSON {
             Normalize();
         }
         /// <summary>
-        /// An event triggered when something changes in this object, such as a call to put.
-        /// Handling this event lets you, for example, update a file every time it changes.
-        /// USE WITH CARE.  Improper use will slow down your program if an object changes a lot!
-        /// </summary>
-        public event EventHandler Altered;
-        public void TriggerAltered() {
-            Altered?.Invoke(this, new EventArgs());
-        }
-        /// <summary>
         ///     Return the key for the associated index
         /// </summary>
         [XmlIgnore] public string this[int i] {
@@ -221,6 +196,8 @@ namespace JSON {
             get { return getValue(key); }
             set { put(key, value); }
         }
+        public static string[] CommentEnders { get; } = { "*/}", "*/" };
+        public static string[] CommentStarters { get; } = { "{/*", "/*" };
         /// <summary>
         ///     Return the number of JSON items in hashtable
         /// </summary>
@@ -230,8 +207,12 @@ namespace JSON {
                 lock (_myKeyList) return _myKeyList.ToArray();
             }
         }
-        public static string[] CommentEnders { get; } = {"*/}", "*/"};
-        public static string[] CommentStarters { get; } = {"{/*", "/*"};
+        /// <summary>
+        ///     An event triggered when something changes in this object, such as a call to put.
+        ///     Handling this event lets you, for example, update a file every time it changes.
+        ///     USE WITH CARE.  Improper use will slow down your program if an object changes a lot!
+        /// </summary>
+        public event EventHandler Altered;
         /// <summary>
         ///     Accumulate values under a key. It is similar to the put method except
         ///     that if there is already an object stored under the key then a
@@ -249,7 +230,7 @@ namespace JSON {
                 put(key, val);
             }
             else if (obj is JSONArray) {
-                a = (JSONArray) obj;
+                a = (JSONArray)obj;
                 a.put(val);
             }
             else {
@@ -278,7 +259,7 @@ namespace JSON {
         /// <param name="value">The value to add</param>
         /// <param name="omitIfEmpty">If true, the key/value will not be added if the value is null or an empty string.</param>
         public JSONObject Add(string key, object value, bool omitIfEmpty) {
-            if (omitIfEmpty && (value == null || value is string && string.IsNullOrEmpty((string) value))) return this;
+            if (omitIfEmpty && (value == null || value is string && string.IsNullOrEmpty((string)value))) return this;
             return put(key, value);
         }
         /// <summary>
@@ -289,7 +270,7 @@ namespace JSON {
         /// <param name="value">The value to add</param>
         /// <param name="defaultValue">The default value to add if value is null or an empty string.</param>
         public JSONObject Add(string key, object value, object defaultValue) {
-            if (value == null || value is string && string.IsNullOrEmpty((string) value))
+            if (value == null || value is string && string.IsNullOrEmpty((string)value))
                 return put(key, defaultValue);
             return put(key, value);
         }
@@ -300,12 +281,30 @@ namespace JSON {
             return _myDict.Values.All(func);
         }
         public T Cast<T>() where T : JSONObject {
-            return (T) this;
+            return (T)this;
+        }
+        /// <summary>
+        ///     Creates a new instance that's a deep copy of this JSONObject with all underlying objects copied at all levels (e.g.
+        ///     JSONObjects and JSONArrays within this JSONObject will be deep-copied).
+        /// </summary>
+        public JSONObject Clone() {
+            var newobj = new JSONObject();
+            string[] keyarray;
+            lock (_myKeyList) {
+                keyarray = _myKeyList.ToArray();
+            }
+            foreach (var key in keyarray) {
+                var val = _myDict[key];
+                if (val is JSONObject) newobj.put(key, ((JSONObject)val).Clone());
+                else if (val is JSONArray) newobj.put(key, ((JSONArray)val).Clone());
+                else newobj.put(key, val);
+            }
+            return newobj;
         }
         public virtual T get<T>(string key) {
             var obj = opt(key);
             if (obj == null) throw new Exception("No such element");
-            return (T) obj;
+            return (T)obj;
         }
         /// <summary>
         ///     Get the boolean value associated with a key.
@@ -315,7 +314,7 @@ namespace JSON {
         public virtual bool getBool(string key) {
             var o = getValue(key);
             if (o is bool) {
-                var b = (bool) o;
+                var b = (bool)o;
                 return b;
             }
             throw new Exception($"JSONObject[{JSONUtils.Enquote(key)}] is not a Boolean");
@@ -334,10 +333,10 @@ namespace JSON {
         /// <returns>The double value</returns>
         public double getDouble(string key) {
             var o = getValue(key);
-            if (o is double) return (double) o;
-            if (o is string) return (string) o == "" ? 0 : Convert.ToDouble(o);
-            if (o is int) return (int) o;
-            if (o is decimal) return decimal.ToDouble((decimal) o);
+            if (o is double) return (double)o;
+            if (o is string) return (string)o == "" ? 0 : Convert.ToDouble(o);
+            if (o is int) return (int)o;
+            if (o is decimal) return decimal.ToDouble((decimal)o);
             var msg = $"JSONObject[{JSONUtils.Enquote(key)}] is not a double";
             throw new Exception(msg);
         }
@@ -351,10 +350,10 @@ namespace JSON {
         /// <returns> The integer value.</returns>
         public int getInt(string key) {
             var o = getValue(key);
-            if (o is int) return (int) o;
+            if (o is int) return (int)o;
             if (o is string) return Convert.ToInt32(o);
-            if (o is decimal) return decimal.ToInt32((decimal) o);
-            if (o is double) return (int) Math.Round((double) o);
+            if (o is decimal) return decimal.ToInt32((decimal)o);
+            if (o is double) return (int)Math.Round((double)o);
             var msg = $"JSONObject[{JSONUtils.Enquote(key)}] is not a int";
             throw new Exception(msg);
         }
@@ -365,7 +364,7 @@ namespace JSON {
         /// <returns>A JSONArray which is the value</returns>
         public JSONArray getJSONArray(string key) {
             var o = getValue(key);
-            if (o is JSONArray) return (JSONArray) o;
+            if (o is JSONArray) return (JSONArray)o;
             var msg = $"JSONObject[{JSONUtils.Enquote(key)}]={o} is not a JSONArray";
             throw new Exception(msg);
         }
@@ -376,7 +375,7 @@ namespace JSON {
         /// <returns>A JSONObject which is the value.</returns>
         public JSONObject getJSONObject(string key) {
             var o = getValue(key);
-            if (o is JSONObject) return (JSONObject) o;
+            if (o is JSONObject) return (JSONObject)o;
             var msg = $"JSONObject[{JSONUtils.Enquote(key)}]={o} is not a JSONArray";
             throw new Exception(msg);
         }
@@ -458,7 +457,7 @@ namespace JSON {
             //return ja;
         }
         public T opt<T>(string key) {
-            return (T) opt(key);
+            return (T)opt(key);
         }
         /// <summary>
         ///     Get an optional value associated with a key.
@@ -480,7 +479,7 @@ namespace JSON {
         public bool optBoolean(string key, bool defaultValue = false) {
             var obj = opt(key);
             if (obj != null) {
-                if (obj is bool) return (bool) obj;
+                if (obj is bool) return (bool)obj;
                 if (obj is string) return Convert.ToBoolean(obj);
             }
             return defaultValue;
@@ -497,10 +496,10 @@ namespace JSON {
         public double optDouble(string key, double defaultValue = double.NaN) {
             var obj = opt(key);
             if (obj != null) {
-                if (obj is double) return (double) obj;
-                if (obj is string) return (string) obj == "" ? 0 : Convert.ToDouble(obj);
-                if (obj is int) return (int) obj;
-                if (obj is decimal) return decimal.ToDouble((decimal) obj);
+                if (obj is double) return (double)obj;
+                if (obj is string) return (string)obj == "" ? 0 : Convert.ToDouble(obj);
+                if (obj is int) return (int)obj;
+                if (obj is decimal) return decimal.ToDouble((decimal)obj);
             }
             return defaultValue;
         }
@@ -516,10 +515,10 @@ namespace JSON {
         public int optInt(string key, int defaultValue = 0) {
             var obj = opt(key);
             if (obj != null) {
-                if (obj is int) return (int) obj;
+                if (obj is int) return (int)obj;
                 if (obj is string) return Convert.ToInt32(obj);
-                if (obj is decimal) return decimal.ToInt32((decimal) obj);
-                if (obj is double) return (int) Math.Round((double) obj);
+                if (obj is decimal) return decimal.ToInt32((decimal)obj);
+                if (obj is double) return (int)Math.Round((double)obj);
             }
             return defaultValue;
         }
@@ -553,6 +552,27 @@ namespace JSON {
         public string optString(string key, string defaultValue = "") {
             var obj = opt(key);
             return obj?.ToString() ?? defaultValue;
+        }
+        public uint optUInt(string key, uint defaultValue = 0) {
+            var obj = opt(key);
+            if (obj != null) {
+                if (obj is uint) return (uint)obj;
+                if (obj is int) return Convert.ToUInt32(obj);
+                if (obj is string) return Convert.ToUInt32(obj);
+                if (obj is decimal) return decimal.ToUInt32((decimal)obj);
+                if (obj is double) return (uint)Math.Round((double)obj);
+            }
+            return defaultValue;
+        }
+        public ulong optULong(string key, ulong defaultValue = 0) {
+            var obj = opt(key);
+            if (obj != null) {
+                if (obj is ulong) return (ulong)obj;
+                if (obj is int || obj is string || obj is uint || obj is long) return Convert.ToUInt64(obj);
+                if (obj is decimal) return decimal.ToUInt64((decimal)obj);
+                if (obj is double) return (ulong)Math.Round((double)obj);
+            }
+            return defaultValue;
         }
         // OMITTED - all put methods can be replaced by a indexer in C#
         //         - ===================================================
@@ -647,11 +667,11 @@ namespace JSON {
                             sb.Append('\t');
                     sb.Append(JSONUtils.Enquote(key));
                     sb.Append(colon);
-                    if (obj is string) sb.Append(JSONUtils.Enquote((string) obj));
+                    if (obj is string) sb.Append(JSONUtils.Enquote((string)obj));
                     else if (obj is double) sb.Append(numberToString(obj));
                     else if (obj is bool) sb.Append(obj.ToString().ToLower());
-                    else if (obj is JSONObject) sb.Append(((JSONObject) obj).ToString(format, tab));
-                    else if (obj is JSONArray) sb.Append(((JSONArray) obj).ToString(format, tab));
+                    else if (obj is JSONObject) sb.Append(((JSONObject)obj).ToString(format, tab));
+                    else if (obj is JSONArray) sb.Append(((JSONArray)obj).ToString(format, tab));
                     else sb.Append(obj);
                 }
             }
@@ -662,8 +682,18 @@ namespace JSON {
             sb.Append('}');
             return sb.ToString();
         }
+        public void TriggerAltered() {
+            Altered?.Invoke(this, new EventArgs());
+        }
         public virtual IEnumerable<object> Where(Func<object, bool> func) {
             lock (_myKeyList) return _myKeyList.Select(k => _myDict[k]).Where(func);
+        }
+        protected void SetMyDict(IDictionary<string, object> dict, List<string> keys) {
+            _myDict = new ConcurrentDictionary<string, object>(dict);
+            lock (_myKeyList) {
+                _myKeyList.Clear();
+                _myKeyList.AddRange(keys);
+            }
         }
         private void Normalize() {
             bool changed = false;
@@ -672,15 +702,15 @@ namespace JSON {
             foreach (var key in keyarray) {
                 var o = _myDict[key];
                 if (o is ArrayList) {
-                    _myDict[key] = new JSONArray((ArrayList) o);
+                    _myDict[key] = new JSONArray((ArrayList)o);
                     changed = true;
                 }
                 if (o is Array) {
-                    _myDict[key] = new JSONArray((Array) o);
+                    _myDict[key] = new JSONArray((Array)o);
                     changed = true;
                 }
                 else if (o is Dictionary<string, object>) {
-                    _myDict[key] = new JSONObject((Dictionary<string, object>) o);
+                    _myDict[key] = new JSONObject((Dictionary<string, object>)o);
                     changed = true;
                 }
             }
@@ -692,10 +722,10 @@ namespace JSON {
         /// <param name="number">Number value type object</param>
         /// <returns>String representation of the number</returns>
         public static string numberToString(object number) {
-            if (number is double && double.IsNaN((double) number)) throw new ArgumentException("object must be a valid number", nameof(number));
-            if (number is double && double.IsNaN((double) number)) throw new ArgumentException("object must be a valid number", nameof(number));
+            if (number is double && double.IsNaN((double)number)) throw new ArgumentException("object must be a valid number", nameof(number));
+            if (number is double && double.IsNaN((double)number)) throw new ArgumentException("object must be a valid number", nameof(number));
             // Shave off trailing zeros and decimal point, if possible
-            var s = ((double) number).ToString(NumberFormatInfo.InvariantInfo).ToLower();
+            var s = ((double)number).ToString(NumberFormatInfo.InvariantInfo).ToLower();
             if (s.IndexOf('e') < 0 && s.IndexOf('.') > 0) {
                 while (s.EndsWith("0")) s = s.Substring(0, s.Length - 1);
                 if (s.EndsWith(".")) s = s.Substring(0, s.Length - 1);
@@ -724,7 +754,7 @@ namespace JSON {
                     else if (pi.PropertyType == typeof(DateTime)) pi.SetValue(r, DateTime.Parse("1/1/0001 12:00:00 AM"), null);
                     else pi.SetValue(r, null, null);
                 }
-                var data = datanode?.InnerText.Split(new[] {'|'}, StringSplitOptions.None);
+                var data = datanode?.InnerText.Split(new[] { '|' }, StringSplitOptions.None);
                 if (data == null || data.Length == 0 || data.Length % 2 != 0) return null; // bad data.
                 for (var i = 0; i < data.Length; i += 2) {
                     var propname = map[int.Parse(data[i])];
@@ -756,8 +786,8 @@ namespace JSON {
                 if (pi.IsDefined(typeof(XmlIgnoreAttribute), false)) continue;
                 var val = pi.GetValue(o, null);
                 if (val != null && val.ToString() != "" &&
-                    !(val is bool? && (bool) val == false) &&
-                    !(val is int? && (int) val == 0) &&
+                    !(val is bool? && (bool)val == false) &&
+                    !(val is int? && (int)val == 0) &&
                     !(val is DateTime && val.ToString() == "1/1/0001 12:00:00 AM") &&
                     !string.IsNullOrEmpty(strslz(val))) {
                     // strings longer than 6 chars go into the string map, and the value placed in the data is "_!_key"
@@ -777,7 +807,7 @@ namespace JSON {
                 ++t;
             }
             var sb2 = new StringBuilder();
-            var xwsettings = new XmlWriterSettings {OmitXmlDeclaration = true, Indent = false};
+            var xwsettings = new XmlWriterSettings { OmitXmlDeclaration = true, Indent = false };
             using (var xw = XmlWriter.Create(sb2, xwsettings)) {
                 xw.WriteElementString("x_s_d", sb.ToString());
             }
@@ -785,7 +815,7 @@ namespace JSON {
         }
         public static string XMLSerializeMap<T>() where T : JSONObject {
             var sb = new StringBuilder();
-            var xwsettings = new XmlWriterSettings {OmitXmlDeclaration = true, Indent = false};
+            var xwsettings = new XmlWriterSettings { OmitXmlDeclaration = true, Indent = false };
             using (var xw = XmlWriter.Create(sb, xwsettings)) {
                 xw.WriteStartElement("x_s_m");
                 var pinfos = typeof(T).GetProperties();
@@ -804,22 +834,15 @@ namespace JSON {
             return sb.ToString();
         }
         private static string strslz(object o) {
-            if (o is bool?) return (bool) o ? "T" : "F";
+            if (o is bool?) return (bool)o ? "T" : "F";
             if (o is IDictionary) return null;
             return o?.ToString();
         }
         /// <summary>The hash map where the JSONObject's properties are kept.</summary>
         private ConcurrentDictionary<string, object> _myDict;
-        protected void SetMyDict(IDictionary<string, object> dict, List<string> keys) {
-            _myDict = new ConcurrentDictionary<string, object>(dict);
-            lock (_myKeyList) {
-                _myKeyList.Clear();
-                _myKeyList.AddRange(keys);
-            }
-        }
         /// <summary>A shadow list of keys to enable access by sequence of insertion</summary>
         private List<string> _myKeyList = new List<string>();
-        private static readonly JavaScriptSerializer _serializer = new JavaScriptSerializer {MaxJsonLength = int.MaxValue, RecursionLimit = int.MaxValue};
+        private static readonly JavaScriptSerializer _serializer = new JavaScriptSerializer { MaxJsonLength = int.MaxValue, RecursionLimit = int.MaxValue };
         /// <summary>
         ///     It is sometimes more convenient and less ambiguous to have a NULL
         ///     object than to use C#'s null value.
